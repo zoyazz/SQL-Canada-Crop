@@ -1,0 +1,246 @@
+Loading required package: RSQLite
+> library("RSQLite")
+Warning message:
+package ‘RSQLite’ was built under R version 4.2.3 
+> library(DBI)
+Warning message:
+package ‘DBI’ was built under R version 4.2.3 
+> 
+> conn <- dbConnect(RSQLite::SQLite(),"FinalDB.sqlite") #CONNECTION OBJECT 
+> 
+> ############# creating Tables ###############################
+> 
+> #crop table
+> dbExecute(conn, "DROP TABLE IF EXISTS CROP_DATA") #deleting if already created
+[1] 0
+> 
+> df1 <- dbExecute(conn, 
++                  "CREATE TABLE CROP_DATA (
++                                       CD_ID INTEGER NOT NULL,
++                                       YEAR DATE NOT NULL,
++                                       CROP_TYPE VARCHAR(20) NOT NULL,
++                                       GEO VARCHAR(20) NOT NULL, 
++                                       SEEDED_AREA INTEGER NOT NULL,
++                                       HARVESTED_AREA INTEGER NOT NULL,
++                                       PRODUCTION INTEGER NOT NULL,
++                                       AVG_YIELD INTEGER NOT NULL,
++                                       PRIMARY KEY (CD_ID)
++                                       )", 
++                  errors=FALSE
++ )
+> 
+> #Farm Prices table
+> dbExecute(conn, "DROP TABLE IF EXISTS FARM_PRICES")
+[1] 0
+> 
+> df2 <- dbExecute(conn, 
++                  "CREATE TABLE FARM_PRICES (
++                                       CD_ID INTEGER NOT NULL,
++                                       YEAR DATE NOT NULL,
++                                       CROP_TYPE VARCHAR(20) NOT NULL,
++                                       GEO VARCHAR(20) NOT NULL,
++                                     PRICE_PRERMT FLOAT(6) NOT NULL,
++ PRIMARY KEY (CD_ID)
++ )",
++                  errors = FALSE)
+> if (df2 == -1){
++   cat ("An error has occurred.\n")
++   msg <- odbcGetErrMsg(conn)
++   print (msg)
++ } else {
++   cat ("Table was created successfully.\n")
++ } 
+Table was created successfully.
+> 
+> #Daily FX table
+> dbExecute(conn, "DROP TABLE IF EXISTS DAILY_FX")
+[1] 0
+> 
+> df3 <- dbExecute(conn, 
++                  "CREATE TABLE DAILY_FX (
++ DFX_ID INTEGER NOT NULL,
++ YEAR DATE NOT NULL,
++ FXUSDCAD FLOAT(6) NOT NULL,
++ PRIMARY KEY (DFX_ID)
++ )",
++                  errors = FALSE)
+> if (df3 == -1){
++   cat ("An error has occurred.\n")
++   msg <- odbcGetErrMsg(conn)
++   print (msg)
++ } else {
++   cat ("Table was created successfully.\n")
++ } 
+Table was created successfully.
+> 
+> dbExecute(conn, "DROP TABLE IF EXISTS MONTHLY_FX")
+[1] 0
+> 
+> df4 <- dbExecute(conn, 
++                  "CREATE TABLE MONTHLY_FX (
++ DFX_ID INTEGER NOT NULL,
++ YEAR DATE NOT NULL,
++ FXUSDCAD FLOAT(8) NOT NULL,
++ PRIMARY KEY (DFX_ID)
++ )",
++                  errors = FALSE)
+> if (df4 == -1){
++   cat ("An error has occurred.\n")
++   msg <- odbcGetErrMsg(conn)
++   print (msg)
++ } else {
++   cat ("Table was created successfully.\n")
++ } 
+Table was created successfully.
+> 
+> dbListTables(conn)
+[1] "CROP_DATA"   "DAILY_FX"    "FARM_PRICES" "MONTHLY_FX" 
+> 
+> #Loading data
+> crop_df <- read.csv("C:/Users/zoyaz/Dropbox/My PC (LAPTOP-1Q5GKF54)/Downloads/data_analysis/Annual_Crop_Data.csv")
+> farm_df <- read.csv("C:/Users/zoyaz/Dropbox/My PC (LAPTOP-1Q5GKF54)/Downloads/data_analysis/Monthly_Farm_Prices.csv")
+> daily_df <- read.csv("C:/Users/zoyaz/Dropbox/My PC (LAPTOP-1Q5GKF54)/Downloads/data_analysis/Daily_FX.csv")
+> monthly_df <- read.csv("C:/Users/zoyaz/Dropbox/My PC (LAPTOP-1Q5GKF54)/Downloads/data_analysis/Monthly_FX.csv")
+> 
+> head(crop_df)
+  CD_ID       YEAR CROP_TYPE          GEO SEEDED_AREA HARVESTED_AREA PRODUCTION AVG_YIELD
+1     0 1965-12-31    Barley      Alberta     1372000        1372000    2504000      1825
+2     1 1965-12-31    Barley       Canada     2476800        2476800    4752900      1920
+3     2 1965-12-31    Barley Saskatchewan      708000         708000    1415000      2000
+4     3 1965-12-31    Canola      Alberta      297400         297400     215500       725
+5     4 1965-12-31    Canola       Canada      580700         580700     512600       885
+6     5 1965-12-31    Canola Saskatchewan      224600         224600     242700      1080
+> head(farm_df)
+  CD_ID       DATE CROP_TYPE          GEO PRICE_PRERMT
+1     0 1985-01-01    Barley      Alberta       127.39
+2     1 1985-01-01    Barley Saskatchewan       121.38
+3     2 1985-01-01    Canola      Alberta       342.00
+4     3 1985-01-01    Canola Saskatchewan       339.82
+5     4 1985-01-01       Rye      Alberta       100.77
+6     5 1985-01-01       Rye Saskatchewan       109.75
+> head(daily_df)
+  DFX_ID       DATE FXUSDCAD
+1      0 2017-01-03   1.3435
+2      1 2017-01-04   1.3315
+3      2 2017-01-05   1.3244
+4      3 2017-01-06   1.3214
+5      4 2017-01-09   1.3240
+6      5 2017-01-10   1.3213
+> head(monthly_df)
+  DFX_ID       DATE FXUSDCAD
+1      0 2017-01-01 1.319276
+2      1 2017-02-01 1.310726
+3      2 2017-03-01 1.338643
+4      3 2017-04-01 1.344021
+5      4 2017-05-01 1.360705
+6      5 2017-06-01 1.329805
+> 
+> #Reading data into table
+> dbWriteTable(conn, "CROP_DATA", crop_df, overwrite=TRUE, header = TRUE)
+> dbWriteTable(conn, "FARM_PRICES", farm_df, overwrite=TRUE, header = TRUE)
+> dbWriteTable(conn, "DAILY_FX", daily_df, overwrite=TRUE, header = TRUE)
+> dbWriteTable(conn, "MONTHLY_FX", monthly_df, overwrite=TRUE, header = TRUE)
+> 
+> dbGetQuery(conn, 'SELECT COUNT(CD_ID) FROM FARM_PRICES') #2678 RECORDS
+  COUNT(CD_ID)
+1         2678
+> 
+> #provinces we have information from
+> dbGetQuery(conn, 'SELECT DISTINCT(GEO) FROM FARM_PRICES') #alberta and sakathchewan
+           GEO
+1      Alberta
+2 Saskatchewan
+> 
+> #distinct crops we have data on
+> dbGetQuery(conn, 'SELECT DISTINCT(CROP_TYPE) AS CROP 
++            FROM CROP_DATA')
+    CROP
+1 Barley
+2 Canola
+3    Rye
+4  Wheat
+> 
+> #total Rye in 1968
+> dbGetQuery(conn, "SELECT SUM(HARVESTED_AREA) AS TOTAL_RYE_1968 FROM CROP_DATA
++ WHERE CROP_TYPE = 'Rye' AND strftime('%Y',YEAR) = '1968'")
+  TOTAL_RYE_1968
+1         476100
+> 
+> #yearly crop data from 1985 to 2020
+> dbGetQuery(conn, 'SELECT min(DATE) FIRST_DATE, max(DATE) LAST_DATE FROM FARM_PRICES')
+  FIRST_DATE  LAST_DATE
+1 1985-01-01 2020-12-01
+> 
+> # average price of crops that are greater than $350
+> dbGetQuery(conn, "SELECT DISTINCT(CROP_TYPE), Avg(PRICE_PRERMT) as AVG_PRICE
++ FROM FARM_PRICES
++ WHERE PRICE_PRERMT >= 350")
+  CROP_TYPE AVG_PRICE
+1    Canola  448.9472
+> 
+> # the highest yielding year for each type of crop
+> dbGetQuery(conn, "SELECT CROP_TYPE, MAX(AVG_YIELD) AS MAX_YIELD, YEAR
++ FROM CROP_DATA 
++ WHERE GEO='Saskatchewan' 
++ GROUP BY CROP_TYPE 
++ ORDER BY MAX_YIELD desc")
+  CROP_TYPE MAX_YIELD       YEAR
+1    Barley      3800 2016-12-31
+2     Wheat      3300 2013-12-31
+3       Rye      3200 2017-12-31
+4    Canola      2400 2016-12-31
+> 
+> # average yield by crop type and city
+> query <- "
++   SELECT CROP_TYPE, GEO, AVG(AVG_YIELD) AS AVG_YIELD
++   FROM CROP_DATA
++   GROUP BY CROP_TYPE, GEO
++   ORDER BY CROP_TYPE, GEO
++ "
+> 
+> dbGetQuery(conn, query)
+   CROP_TYPE          GEO AVG_YIELD
+1     Barley      Alberta  2922.054
+2     Barley       Canada  2791.411
+3     Barley Saskatchewan  2559.054
+4     Canola      Alberta  1478.018
+5     Canola       Canada  1434.839
+6     Canola Saskatchewan  1388.696
+7        Rye      Alberta  2141.607
+8        Rye       Canada  2007.893
+9        Rye Saskatchewan  1765.196
+10     Wheat      Alberta  2465.411
+11     Wheat       Canada  2262.893
+12     Wheat Saskatchewan  2026.643
+> 
+> dbGetQuery(conn, "SELECT SUM(HARVESTED_AREA) AS TOTAL_HARVESTED_WHEAT, strftime('%Y',YEAR) AS YEAR
++ FROM CROP_DATA
++ WHERE YEAR = (SELECT MAX(YEAR) FROM CROP_DATA)
++ AND GEO = 'Canada' AND CROP_TYPE = 'Wheat'")
+  TOTAL_HARVESTED_WHEAT YEAR
+1              10017800 2020
+> 
+> # Canola prices in Saskawtchewan for the past 12 months in USD and CAD using inner join
+> dbGetQuery(conn, "SELECT F.DATE, F.GEO, F.CROP_TYPE, M.FXUSDCAD AS USDtoCAD, F.PRICE_PRERMT AS CAD_PRICE,
++ (F.PRICE_PRERMT/M.FXUSDCAD) AS USD_PRICE
++ FROM FARM_PRICES F, MONTHLY_FX M
++ WHERE strftime('%Y',F.DATE) = strftime('%Y',M.DATE)
++ AND strftime('%m',F.DATE) = strftime('%m',M.DATE)
++ AND CROP_TYPE ='Canola' 
++ AND GEO = 'Saskatchewan' 
++ ORDER BY F.DATE desc LIMIT 12")
+         DATE          GEO CROP_TYPE USDtoCAD CAD_PRICE USD_PRICE
+1  2020-12-01 Saskatchewan    Canola 1.280771    507.33  396.1128
+2  2020-11-01 Saskatchewan    Canola 1.306820    495.64  379.2718
+3  2020-10-01 Saskatchewan    Canola 1.321471    474.80  359.2965
+4  2020-09-01 Saskatchewan    Canola 1.322810    463.52  350.4057
+5  2020-08-01 Saskatchewan    Canola 1.322205    464.60  351.3827
+6  2020-07-01 Saskatchewan    Canola 1.349850    462.88  342.9122
+7  2020-06-01 Saskatchewan    Canola 1.355032    453.31  334.5383
+8  2020-05-01 Saskatchewan    Canola 1.396970    451.96  323.5288
+9  2020-04-01 Saskatchewan    Canola 1.405786    450.99  320.8099
+10 2020-03-01 Saskatchewan    Canola 1.395250    447.85  320.9819
+11 2020-02-01 Saskatchewan    Canola 1.328584    449.61  338.4129
+12 2020-01-01 Saskatchewan    Canola 1.308673    447.92  342.2704
+> 
+> close(conn)
